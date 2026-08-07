@@ -1,51 +1,38 @@
 import axios from 'axios';
-import api from '../lib/axios';
-import type {
-    SignUpRequest,
-    SignUpResponse,
-    ReissueResponse,
-    GoogleCallbackRequest,
-    GoogleCallbackResponse,
-    NicknameCheckParams,
-    NicknameCheckResponse
-} from '../types/auth';
+import type { ApiResponse, SignUpRequest, SignUpResponse, SocialLoginResponse, ReissueResponse } from '../types/auth';
 
-const BASE_URL = import.meta.env.VITE_API_URL;
+// 프로젝트 환경에 맞는 Axios 인스턴스를 설정해 주세요.
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
-// 1. [POST] 회원가입 API
-export const signUp = async (data: SignUpRequest): Promise<SignUpResponse> => {
-    const response = await api.post<SignUpResponse>('/api/v1/auth/sign-up', data);
+const authApi = axios.create({
+    baseURL: API_BASE_URL,
+    headers: {
+        'Content-Type': 'application/json',
+    },
+});
+
+/* 1. 회원가입 API */
+export const signUp = async (data: SignUpRequest): Promise<ApiResponse<SignUpResponse>> => {
+    const response = await authApi.post<ApiResponse<SignUpResponse>>('/auth/sign-up', data);
     return response.data;
 };
 
-// 2. [POST] Access Token 재발급 API
-export const reissueToken = async (): Promise<ReissueResponse> => {
-    const response = await axios.post<ReissueResponse>(
-        `${BASE_URL}/api/v1/auth/reissue`,
+/* 2. 소셜 로그인 (구글 콜백) API */
+export const googleLoginCallback = async (code: string): Promise<ApiResponse<SocialLoginResponse>> => {
+    const response = await authApi.post<ApiResponse<SocialLoginResponse>>('/auth/google/callback', { code });
+    return response.data;
+};
+
+/* 3. 액세스 토큰 재발급 API */
+export const reissueToken = async (refreshToken: string): Promise<ApiResponse<ReissueResponse>> => {
+    const response = await authApi.post<ApiResponse<ReissueResponse>>(
+        '/auth/reissue',
         {},
-        { withCredentials: true } // 쿠키의 refreshToken 전달
-    );
-    return response.data;
-};
-
-// 3. [GET] 구글 소셜 로그인 API
-export const googleCallback = async (
-    params: GoogleCallbackRequest
-): Promise<GoogleCallbackResponse> => {
-    const response = await api.get<GoogleCallbackResponse>(
-        '/api/v1/auth/google/callback',
-        { params }
-    );
-    return response.data;
-};
-
-// 4. [POST] /api/v1/auth/nicknames-check
-export const checkNickname = async (params: NicknameCheckParams): Promise<NicknameCheckResponse> => {
-    // POST 요청이지만 query parameter로 전달되므로 params 옵션을 지정합니다.
-    const response = await api.post<NicknameCheckResponse>(
-        "/api/v1/auth/nicknames-check",
-        null,
-        { params }
+        {
+        headers: {
+            Authorization: `Bearer ${refreshToken}`,
+        },
+        }
     );
     return response.data;
 };
