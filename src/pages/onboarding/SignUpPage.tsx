@@ -1,75 +1,102 @@
-// 회원가입
-import { useState } from "react";
+// 회원가입 페이지
+
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
-// import { signUp } from "../api/auth"; // 실제 API 연결 시 주석 해제
-import { mockSignUp } from "../../api/mockAuth";
+import { signUp, checkNickname } from "../../api/auth";
+import type { SignUpRequest } from "../../types/auth";
 
 export default function SignUpPage() {
     const navigate = useNavigate();
     const location = useLocation();
 
-    // 소셜 로그인(LoginPage)에서 넘어온 signUpToken이 있다면 가져오기 (없으면 테스트용 임시값)
-    const signUpToken = location.state?.signUpToken || "mock-signup-token-12345";
+    // 소셜 로그인 리다이렉트 시 넘어온 state 값
+    const signUpToken: string | undefined = location.state?.signUpToken;
+    const initialEmail: string = location.state?.email || "";
+    const initialName: string = location.state?.name || "";
+    const isAlertShown = useRef(false);
 
-    // 1. 입력 필드 상태 관리
-    const [email, setEmail] = useState("");
-    const [name, setName] = useState("");
+    // 2. direct 접근 및 signUpToken 유무 검증
+    useEffect(() => {
+        if (isAlertShown.current) return;
+
+        if (!signUpToken) {
+            isAlertShown.current = true;
+            alert("회원가입이 필요합니다");
+            navigate("/login");
+            return;
+        }
+
+        if (!initialEmail.endsWith(".ac.kr")) {
+            isAlertShown.current = true;
+            alert("학교 이메일 계정(.ac.kr)만 회원가입이 가능합니다.");
+            navigate("/login");
+        }
+    }, [signUpToken, initialEmail, navigate]);
+
+    // 3. email, name 상태 고정 (readOnly)
+    const [email] = useState(initialEmail);
+    const [name] = useState(initialName);
     const [studentNumber, setStudentNumber] = useState("");
     const [nickname, setNickname] = useState("");
 
-    // 2. 검증 및 인증 관련 상태 관리
-    const [isNicknameChecked, setIsNicknameChecked] = useState(false); // 닉네임 중복확인 여부
-    const [isEmailVerified, setIsEmailVerified] = useState(false);     // 이메일 인증 완료 여부
+    // 검증 관련 상태 관리
+    const [isNicknameChecked, setIsNicknameChecked] = useState(false);
 
-    // 닉네임 중복확인 핸들러
-    const handleNicknameCheck = () => {
+    // 닉네임 중복확인 핸들러 (API 연동)
+    const handleNicknameCheck = async () => {
         if (!nickname.trim()) {
             alert("닉네임을 입력해주세요.");
             return;
         }
-        // [수정] 여러 번 테스트가 가능하도록 true 설정 및 alert만 실행 (버튼 텍스트는 바꾸지 않음)
-        setIsNicknameChecked(true);
-        alert("사용 가능한 닉네임입니다.");
+
+        try {
+            const response = await checkNickname({ nickname: nickname.trim() });
+
+            if (response.isSuccess) {
+                if (response.result.available) {
+                    setIsNicknameChecked(true);
+                    alert("사용 가능한 닉네임입니다.");
+                } else {
+                    setIsNicknameChecked(false);
+                    alert("이미 사용 중인 닉네임입니다.");
+                }
+            } else {
+                setIsNicknameChecked(false);
+                alert(response.message || "닉네임 중복 확인에 실패했습니다.");
+            }
+        } catch (error) {
+            console.error("닉네임 중복 확인 실패:", error);
+            setIsNicknameChecked(false);
+            alert("닉네임 중복 확인 중 오류가 발생했습니다.");
+        }
     };
 
-    // [추가] 사용자가 닉네임을 새로 타이핑하면 다시 중복확인을 받도록 상태를 리셋
     const handleNicknameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setNickname(e.target.value);
-        setIsNicknameChecked(false); // 새로운 값을 입력하면 중복확인 취소 상태로 변경
+        setIsNicknameChecked(false);
     };
 
-    // 이메일 인증하기 핸들러
-    const handleEmailVerify = () => {
-        if (!email.trim() || !email.includes("@") || !email.includes("ac.kr")) {
-            alert("올바른 학교 이메일을 입력해주세요.");
-            return;
-        }
-        setIsEmailVerified(true);
-        alert("이메일 인증이 완료되었습니다.");
-    };
-
-    // 회원가입 완료하기 버튼 활성화 조건 충족 여부
+    // 회원가입 완료하기 버튼 활성화 조건
     const isFormValid = 
-        email.trim() !== "" && 
-        name.trim() !== "" && 
         studentNumber.trim() !== "" && 
         nickname.trim() !== "" && 
-        isNicknameChecked && 
-        isEmailVerified;
+        isNicknameChecked;
 
     // 회원가입 완료 요청 핸들러
     const handleSignUpSubmit = async () => {
-        if (!isFormValid) return;
+        if (!isFormValid || !signUpToken) return;
 
         try {
-            const response = await mockSignUp({
+            const signUpData: SignUpRequest = {
                 signUpToken,
                 nickname,
-                studentNumber
-            });
+                studentNumber,
+            };
+
+            const response = await signUp(signUpData);
 
             if (response.isSuccess) {
-                alert("회원가입에 성공하였습니다.")
+                alert("회원가입에 성공하였습니다.");
                 navigate("/login");
             }
         } catch (error) {
@@ -98,7 +125,7 @@ export default function SignUpPage() {
                     <p className="text-[14px] text-[#7F7F7F] mt-1.5">학교 이메일로 안전하게 가입하세요</p>
                 </div>
 
-                {/* 학교 이메일 */}
+                {/* 학교 이메일 (readOnly 마킹) */}
                 <div className="flex flex-col gap-1 mt-1">
                     <label htmlFor="email" className="text-[14px] text-[#1A1A1A]">
                         학교 이메일 *
@@ -107,18 +134,16 @@ export default function SignUpPage() {
                         type="email"
                         id="email"
                         value={email}
-                        disabled={isEmailVerified} 
-                        onChange={(e) => setEmail(e.target.value)}
+                        readOnly
                         placeholder="example@sookmyung.ac.kr"
-                        // [수정] w-[304] -> w-[304px], !disabled:bg-[#FFFFFF] -> disabled:!bg-white로 문법 교정
-                        className="w-[304px] h-[40px] rounded-[35.9px] bg-white px-5 text-[12px] text-[#1A1A1A] placeholder-[#7F7F7F] focus:outline-none disabled:!bg-white"
+                        className="w-[304px] h-[40px] rounded-[35.9px] bg-white px-5 text-[12px] text-[#1A1A1A] placeholder-[#7F7F7F] focus:outline-none"
                     />
                     <p className="text-[12px] text-[#7F7F7F]">
                         학교 이메일(@ac.kr)만 사용 가능합니다
                     </p>
                 </div>
 
-                {/* 이름 */}
+                {/* 이름 (readOnly 마킹) */}
                 <div className="flex flex-col gap-1">
                     <label htmlFor="name" className="text-[14px] text-[#1A1A1A]">
                         이름 *
@@ -127,7 +152,7 @@ export default function SignUpPage() {
                         type="text"
                         id="name"
                         value={name}
-                        onChange={(e) => setName(e.target.value)}
+                        readOnly
                         placeholder="홍길동"
                         className="w-[133px] h-[40px] rounded-[35.9px] bg-white px-5 text-[12px] text-[#1A1A1A] placeholder-[#7F7F7F] focus:outline-none"
                     />
@@ -172,21 +197,8 @@ export default function SignUpPage() {
                     </div>
                 </div>
 
-                {/* 버튼 영역 (이메일 인증 및 가입 완료) */}
+                {/* 회원가입 완료 버튼 영역 */}
                 <div className="flex flex-col gap-3 pt-2">
-                    {/* 조건 1: 이메일 인증 버튼 기능 제어 */}
-                    <button
-                        type="button"
-                        onClick={handleEmailVerify}
-                        disabled={isEmailVerified}
-                        className={`w-[304px] h-[40px] rounded-[35.9px] mt-1 text-[14px] !font-bold text-white transition ${
-                            isEmailVerified ? "bg-[#B3B3B3]" : "bg-[#9996FF] hover:bg-[#8582eb]"
-                        }`}
-                    >
-                        {isEmailVerified ? "이메일 인증이 완료되었습니다" : "이메일 인증하기"}
-                    </button>
-
-                    {/* 조건 2: 회원가입 완료하기 버튼 동적 색상 및 활성화 제어 */}
                     <button
                         type="button"
                         onClick={handleSignUpSubmit}

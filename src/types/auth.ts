@@ -1,4 +1,4 @@
-// 공통 API 응답 구조 인터페이스
+// 공통 API 응답 구조
 export interface ApiResponse<T> {
     isSuccess: boolean;
     code: string;
@@ -7,36 +7,63 @@ export interface ApiResponse<T> {
 }
 
 // 1. 회원가입
+// request body
 export interface SignUpRequest {
     signUpToken: string;
-    nickname: string;           // !!!! nickName인지 nickname인지 확인하기 !!!!
+    nickname: string;
     studentNumber: string;
 }
 
-export interface SignUpResponse {
+// responses
+export interface TokenResult {
     memberId: number;
     accessToken: string;
     refreshToken: string;
 }
 
-// 2. 소셜 로그인
-export type AuthStatus = 'NEED_SIGNUP' | 'LOGIN';
+export type SignUpResponse = ApiResponse<TokenResult>;
 
-export interface SocialLoginRequest {
-  code: string; // 구글 인가 코드 등 callback 시 전달받을 파라미터
-}
-
-export interface SocialLoginResponse {
-    authStatus: AuthStatus;
-    accessToken: string | null;
-    refreshToken: string | null;
-    signUpToken: string | null;
-    email: string | null;
-    name: string | null;
-}
-
-// 3. 토큰 재발급
-export interface ReissueResponse {
+// 2. 토큰 재발급 Response
+// responses
+export interface AccessTokenResult {
     memberId: number;
     accessToken: string;
 }
+
+export type ReissueResponse = ApiResponse<AccessTokenResult>;
+
+// 3. 구글 소셜 로그인
+
+export interface GoogleCallbackRequest {
+    code: string;
+}
+
+// responses
+export type AuthStatus = 'LOGIN' | 'NEED_SIGNUP';
+
+export interface LoginResult {
+    authStatus: AuthStatus;
+    accessToken?: string;
+    refreshToken?: string;
+    signUpToken?: string;
+    email?: string;
+    name?: string;
+}
+
+export type GoogleCallbackResponse = ApiResponse<LoginResult>;
+
+
+// 4. 닉네임 중복 확인
+// Request Parameter
+export interface NicknameCheckParams {
+    nickname: string;
+}
+
+// Result DTO
+export interface NicknameCheck {
+    nickname: string;
+    available: boolean;
+}
+
+// Response
+export type NicknameCheckResponse = ApiResponse<NicknameCheck>;

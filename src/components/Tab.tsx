@@ -32,9 +32,9 @@ export default function Tab({
                 {/* 첫 번째 탭 */}
                 <button
                     onClick={() => navigate(firstPath)}
-                    className={`transition-colors text-sm ${
+                    className={`transition-colors text-[14px] ${
                         activeTab === "first"
-                            ? "w-[175px] h-[34px] mt-[1px] ml-[5px] flex items-center justify-center bg-[#9996FF] text-[#FFFFFF] rounded-[40px] font-bold"
+                            ? "w-[175px] h-[34px] mt-[1px] ml-[5px] flex items-center justify-center bg-[#9996FF] text-[#FFFFFF] rounded-[40px] !font-bold"
                             : "flex-1 py-1.5 text-center text-[#7F7F7F] hover:text-gray-600"
                     }`}
                 >
@@ -44,9 +44,9 @@ export default function Tab({
                 {/* 두 번째 탭 */}
                 <button
                     onClick={() => navigate(secondPath)}
-                    className={`transition-colors text-sm ${
+                    className={`transition-colors text-[14px] ${
                         activeTab === "second"
-                            ? "w-[175px] h-[34px] mt-[1px] mr-[6px] flex items-center justify-center bg-[#9996FF] text-[#FFFFFF] rounded-[40px] font-bold"
+                            ? "w-[175px] h-[34px] mt-[1px] mr-[6px] flex items-center justify-center bg-[#9996FF] text-[#FFFFFF] rounded-[40px] !font-bold"
                             : "flex-1 py-1.5 text-center text-[#7F7F7F] hover:text-gray-600"
                     }`}
                 >
